@@ -1,0 +1,1 @@
+[{"uid":"dacb0e3b88fda6e5","name":"Kiểm tra trang chủ hiển thị đúng trên mobile viewport","time":{"start":1769574984627,"stop":1769574984627,"duration":0},"status":"skipped","severity":"normal"},{"uid":"2bfac46cf25ac3bb","name":"Kiểm tra trang chủ load thành công","time":{"start":1769574980732,"stop":1769574984627,"duration":3895},"status":"passed","severity":"critical"}]

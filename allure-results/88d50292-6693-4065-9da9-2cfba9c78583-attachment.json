@@ -1,0 +1,4 @@
+{
+  "using": "css selector",
+  "value": "a[href*=\"trang-chu\"], a:contains(\"TRANG CHỦ\"), nav a:first-child"
+}

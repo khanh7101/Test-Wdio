@@ -1,0 +1,61 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "types": [
+            "node",
+            "@wdio/globals/types",
+            "mocha"
+        ],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "outDir": "./dist",
+        "rootDir": ".",
+        "baseUrl": ".",
+        "paths": {
+            "@pages/*": [
+                "tests/pageObjects/*"
+            ],
+            "@config/*": [
+                "config/*"
+            ],
+            "@utils/*": [
+                "scripts/utils/*"
+            ],
+            "@fixtures/*": [
+                "tests/fixtures/*"
+            ]
+        },
+        "lib": [
+            "ES2022",
+            "DOM"
+        ],
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true
+    },
+    "include": [
+        "tests/**/*",
+        "config/**/*",
+        "scripts/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "allure-results",
+        "allure-report",
+        "junit",
+        "logs"
+    ],
+    "ts-node": {
+        "transpileOnly": true,
+        "files": true,
+        "compilerOptions": {
+            "module": "commonjs"
+        }
+    }
+}

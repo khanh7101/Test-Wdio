@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="2" failures="0" errors="0" skipped="1">
+  <testsuite name="Passion Dental Trang Ch" timestamp="2026-01-28T11:36:20" time="3.899" tests="2" failures="0" errors="0" skipped="1">
+    <properties>
+      <property name="specId" value="0"/>
+      <property name="suiteName" value="Passion Dental - Trang Chủ"/>
+      <property name="capabilities" value="chrome.144_0_7559_97.mac"/>
+      <property name="file" value="file:///Users/khanh.vu/Documents/work%20space/enouvo/wdio/test-wdio-code/tests/specs/website/passion-dental-homepage.spec.ts"/>
+    </properties>
+    <testcase classname="chrome.144_0_7559_97.mac.Passion_Dental_-_Trang_Chủ" name="Ki m tra trang ch load th nh c ng" time="3.894">
+      <system-out><![CDATA[
+COMMAND: POST /session/c7e0c6e76f24ce4856439cb181f9c6e7/element - {"using":"css selector","value":"a[href*=\"trang-chu\"], a:contains(\"TRANG CHỦ\"), nav a:first-child"}
+COMMAND: GET /session/c7e0c6e76f24ce4856439cb181f9c6e7/url - {}
+RESULT: {}
+COMMAND: GET /session/c7e0c6e76f24ce4856439cb181f9c6e7/title - {}
+RESULT: {}
+RESULT: {"using":"css selector","value":"a[href*=\"trang-chu\"], a:contains(\"TRANG CHỦ\"), nav a:first-child"}
+COMMAND: GET /session/c7e0c6e76f24ce4856439cb181f9c6e7/url - {}
+RESULT: {}
+COMMAND: GET /session/c7e0c6e76f24ce4856439cb181f9c6e7/title - {}
+RESULT: {}
+]]></system-out>
+    </testcase>
+    <testcase classname="chrome.144_0_7559_97.mac.Passion_Dental_-_Trang_Chủ" name="Ki m tra trang ch hi n th ng tr n mobile viewport" time="0">
+      <skipped/>
+      <system-out><![CDATA[
+COMMAND: DELETE /session/c7e0c6e76f24ce4856439cb181f9c6e7 - {}
+RESULT: {}
+]]></system-out>
+    </testcase>
+  </testsuite>
+</testsuites>

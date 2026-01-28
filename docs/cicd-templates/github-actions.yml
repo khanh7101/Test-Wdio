@@ -1,0 +1,213 @@
+name: WDIO Test Automation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      execution_mode:
+        description: 'Execution Mode'
+        required: true
+        default: 'local'
+        type: choice
+        options:
+          - local
+          - fast
+          - cloud
+          - mobile
+      test_env:
+        description: 'Test Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  NODE_VERSION: '18'
+  EXECUTION_MODE: ${{ github.event.inputs.execution_mode || 'local' }}
+  TEST_ENV: ${{ github.event.inputs.test_env || 'dev' }}
+
+jobs:
+  # ==========================================
+  # Job 1: Validate Environment
+  # ==========================================
+  validate:
+    name: Validate Environment
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Validate environment
+        run: npm run validate:env
+        env:
+          EXECUTION_MODE: ${{ env.EXECUTION_MODE }}
+          TEST_ENV: ${{ env.TEST_ENV }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+
+  # ==========================================
+  # Job 2: Run Tests
+  # ==========================================
+  test:
+    name: Run WDIO Tests
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm run test:${{ env.EXECUTION_MODE }}
+        env:
+          EXECUTION_MODE: ${{ env.EXECUTION_MODE }}
+          TEST_ENV: ${{ env.TEST_ENV }}
+          BASE_URL_DEV: ${{ secrets.BASE_URL_DEV }}
+          BASE_URL_STAGING: ${{ secrets.BASE_URL_STAGING }}
+          BASE_URL_PROD: ${{ secrets.BASE_URL_PROD }}
+          SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+          SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            allure-results/
+            junit/
+            screenshots/
+            logs/
+          retention-days: 7
+
+  # ==========================================
+  # Job 3: Generate Allure Report
+  # ==========================================
+  report:
+    name: Generate Allure Report
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          name: test-results
+      
+      - name: Generate Allure report
+        run: npm run allure:generate
+      
+      - name: Upload Allure report
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+      
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          destination_dir: reports/${{ github.run_number }}
+
+  # ==========================================
+  # Job 4: Send Email Notification
+  # ==========================================
+  notify:
+    name: Send Email Notification
+    runs-on: ubuntu-latest
+    needs: [test, report]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Download test results
+        uses: actions/download-artifact@v3
+        with:
+          name: test-results
+      
+      - name: Send email
+        run: ts-node scripts/email-sender.ts
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_RECIPIENTS_PASSED: ${{ secrets.EMAIL_RECIPIENTS_PASSED }}
+          EMAIL_RECIPIENTS_FAILED: ${{ secrets.EMAIL_RECIPIENTS_FAILED }}
+          COMPANY_NAME: ${{ secrets.COMPANY_NAME || 'Enouvo' }}
+          COMPANY_WEBSITE: ${{ secrets.COMPANY_WEBSITE || 'https://enouvo.com' }}
+          COMPANY_LOGO_URL: ${{ secrets.COMPANY_LOGO_URL }}
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_number }}
+          EXECUTION_MODE: ${{ env.EXECUTION_MODE }}
+          TEST_ENV: ${{ env.TEST_ENV }}

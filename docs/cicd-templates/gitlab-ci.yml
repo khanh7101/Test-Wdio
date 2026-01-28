@@ -1,0 +1,153 @@
+stages:
+  - validate
+  - test
+  - report
+  - deploy
+  - notify
+
+variables:
+  EXECUTION_MODE: "local"
+  TEST_ENV: "dev"
+  NODE_VERSION: "18"
+
+# ==========================================
+# Stage 1: Validate Environment
+# ==========================================
+validate:
+  stage: validate
+  image: node:${NODE_VERSION}
+  before_script:
+    - apt-get update && apt-get install -y openjdk-17-jdk
+    - npm ci
+  script:
+    - npm run validate:env
+  only:
+    - main
+    - merge_requests
+  tags:
+    - docker
+
+# ==========================================
+# Stage 2: Run Tests
+# ==========================================
+test:
+  stage: test
+  image: node:${NODE_VERSION}
+  services:
+    - selenium/standalone-chrome:latest
+  before_script:
+    - apt-get update && apt-get install -y openjdk-17-jdk
+    - npm ci
+  script:
+    - echo "Running WDIO tests in ${EXECUTION_MODE} mode on ${TEST_ENV} environment"
+    - npm run test:${EXECUTION_MODE}
+  artifacts:
+    when: always
+    paths:
+      - allure-results/
+      - junit/
+      - screenshots/
+      - logs/
+    expire_in: 7 days
+  only:
+    - main
+    - merge_requests
+  tags:
+    - docker
+
+# ==========================================
+# Stage 3: Generate Allure Report
+# ==========================================
+generate-report:
+  stage: report
+  image: node:${NODE_VERSION}
+  before_script:
+    - apt-get update && apt-get install -y openjdk-17-jdk
+    - npm ci
+  script:
+    - echo "Generating Allure report..."
+    
+    # Copy history from previous run if exists
+    - |
+      if [ -d "public/history" ]; then
+        echo "Copying history from previous run..."
+        mkdir -p allure-results/history
+        cp -r public/history/* allure-results/history/ || true
+      fi
+    
+    # Generate Allure report
+    - npm run allure:generate
+    
+    # Prepare for GitLab Pages
+    - mkdir -p public/reports/${CI_PIPELINE_ID}
+    - cp -r allure-report/* public/reports/${CI_PIPELINE_ID}/
+    
+    # Save history for next run
+    - mkdir -p public/history
+    - cp -r allure-report/history/* public/history/ || true
+    
+  artifacts:
+    paths:
+      - public/
+      - allure-report/
+    expire_in: 30 days
+  dependencies:
+    - test
+  only:
+    - main
+  tags:
+    - docker
+
+# ==========================================
+# Stage 4: Deploy to GitLab Pages
+# ==========================================
+pages:
+  stage: deploy
+  script:
+    - echo "Deploying to GitLab Pages..."
+    - echo "Report URL: https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}/reports/${CI_PIPELINE_ID}"
+  artifacts:
+    paths:
+      - public
+  dependencies:
+    - generate-report
+  only:
+    - main
+  environment:
+    name: production
+    url: https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}/reports/${CI_PIPELINE_ID}
+  tags:
+    - docker
+
+# ==========================================
+# Stage 5: Send Email Notification
+# ==========================================
+send-email:
+  stage: notify
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm ci
+  script:
+    - echo "Sending email notification..."
+    - export REPORT_URL="https://${CI_PROJECT_NAMESPACE}.gitlab.io/${CI_PROJECT_NAME}/reports/${CI_PIPELINE_ID}"
+    - ts-node scripts/email-sender.ts
+  dependencies:
+    - test
+  only:
+    - main
+  when: always
+  allow_failure: true
+  tags:
+    - docker
+
+# ==========================================
+# Scheduled Pipeline (Optional)
+# ==========================================
+# Run tests daily at 2 AM
+scheduled-test:
+  extends: test
+  only:
+    - schedules
+  variables:
+    EXECUTION_MODE: "local"
+    TEST_ENV: "staging"
